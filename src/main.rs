@@ -10,16 +10,29 @@ fn main() {
         .run();
 }
 
-#[derive(Copy, Clone)]
-struct Particle{
-    p : Vec2,
-    v : Vec2
-}
 struct Model {
     particles : [Particle; 1<<12],
 }
 
-fn model(_app: &App) -> Model {
+#[derive(Copy, Clone)]
+struct Particle {
+    p : Vec2,
+    v : Vec2
+}
+
+struct Cell {
+    tl : Vec2,
+    br : Vec2,
+    child_a : Box<Cell>,
+    child_b : Box<Cell>,
+}
+
+fn model(app: &App) -> Model {
+
+    let window = app.main_window();
+    let win = window.rect();
+    let h = win.h();
+    let w = win.w();
 
     let p = Vec2::new(10.0, 0.0);
     let v = Vec2::new(0.0, 0.0);
@@ -29,8 +42,8 @@ fn model(_app: &App) -> Model {
         particle.v.x = 100.0 * (random_f32() - 0.5) * (random_f32() - 0.5);
         particle.v.y = 100.0 * (random_f32() - 0.5) * (random_f32() - 0.5);
 
-        particle.p.x = 400.0 * (random_f32() - 0.5) * (random_f32() - 0.5);
-        particle.p.y = 400.0 * (random_f32() - 0.5) * (random_f32() - 0.5);
+        particle.p.x = w * (random_f32() - 0.5);
+        particle.p.y = h * (random_f32() - 0.5);
     }
 
     println!("length: {}", particles.len());
@@ -38,9 +51,16 @@ fn model(_app: &App) -> Model {
     Model {particles : particles}
 }
 
-fn update(_app: &App, _model: &mut Model, _update: Update) {
+fn update(app: &App, _model: &mut Model, _update: Update) {
 
     let dt : f32 = (_update.since_last.subsec_millis() as f32) * 0.001;
+
+    let window = app.main_window();
+    let win = window.rect();
+    let h = win.h();
+    let w = win.w();
+    let h_2 = h * 0.5;
+    let w_2 = w * 0.5;
 
     for (_i, particle) in _model.particles.iter_mut().enumerate() {
         // Leap-Frog Integration
@@ -50,6 +70,12 @@ fn update(_app: &App, _model: &mut Model, _update: Update) {
         particle.p += v_half * dt;
         // Kick
         particle.v = v_half + acc(particle.p, dt) * dt * 0.5;
+
+        // Periodic Boundary Conditions
+        particle.p.x -= (particle.p.x > w_2) as i32 as f32 * w;
+        particle.p.x += (particle.p.x < -w_2) as i32 as f32 * w;
+        particle.p.y -= (particle.p.y > h_2) as i32 as f32 * h;
+        particle.p.y += (particle.p.y < -h_2) as i32 as f32 * h;
     }
 }
 
@@ -68,7 +94,7 @@ fn view(_app: &App, _model: &Model, frame: Frame) {
     let draw = _app.draw();
 
     // set background to blue
-    //draw.background().color(BLACK);
+    draw.background().color(BLACK);
 
     for particle in _model.particles {
         draw.ellipse().color(WHITE).x_y(particle.p.x, particle.p.y).radius(1.0);
