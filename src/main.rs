@@ -58,8 +58,8 @@ struct Cell {
     center : Vec2,
     size : Vec2,
     depth : i32,
-    start : i32, 
-    end : i32,
+    start : usize, 
+    end : usize,
     child_a : Option<Box<Cell>>,
     child_b : Option<Box<Cell>>,
 }
@@ -71,13 +71,18 @@ impl Cell {
         let next_depth = self.depth + 1;
 
         let dim = (self.size[0] > self.size[1]) as usize;
-
+        let half  = (self.end - self.start) / 2;
         let split = self.center[dim];
+        
+        let mut n_left : usize = 0;
 
-        let n_left = 0;
+        while(n_left - half > 1) {
+            for (_i, particle) in particles[self.start..self.end].iter().enumerate() {
+                n_left += (particle.position[dim] < split + self.start) as usize;
+            }
+            split = if n_left < half {
 
-        while(n_left - (self.end - self.start) > 1) {
-            n_left += 
+            }
         }
 
         return particles;
