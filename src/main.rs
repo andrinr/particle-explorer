@@ -58,32 +58,71 @@ struct Cell {
     center : Vec2,
     size : Vec2,
     depth : i32,
-    start : usize, 
-    end : usize,
+    start_index : i32, 
+    end_index : i32,
     child_a : Option<Box<Cell>>,
     child_b : Option<Box<Cell>>,
 }
-
 
 impl Cell {
     // Split domain
     fn split(self, mut particles : [Particle; PARTICLE_COUNT]) -> [Particle; PARTICLE_COUNT] {
         let next_depth = self.depth + 1;
 
-        let dim = (self.size[0] > self.size[1]) as usize;
-        let half  = (self.end - self.start) / 2;
-        let split = self.center[dim];
+        if next_depth == MAX_DEPTH {
+            return particles;
+        }
+
+        let dimension = (self.size[0] > self.size[1]) as usize;
+        let half_count : i32  = (self.end_index - self.start_index) / 2;
+        let mut step : f32 = self.size[dimension] / 2.0;
+        let mut split : f32 = self.center[dimension];
         
-        let mut n_left : usize = 0;
+        let mut left_count : i32 = 0;
 
-        while(n_left - half > 1) {
-            for (_i, particle) in particles[self.start..self.end].iter().enumerate() {
-                n_left += (particle.position[dim] < split + self.start) as usize;
+        // binary search for propper split
+        loop {
+            for (_i, particle) in particles[self.start_index as usize..self.end_index as usize].iter().enumerate() {
+                left_count += (particle.position[dimension] < split) as i32 + self.start_index;
             }
-            split = if n_left < half {
+            step /= 2.0;
 
+            if left_count < half_count {
+                split += step
+            } 
+            else {
+                split -= step
+            }
+
+            if abs(left_count - half_count) <= 1 {
+                break;
             }
         }
+        
+        // TODO: reshuffle array
+        
+        // Define new child cells
+        let mut center_a : Vec2 = Vec2::new(0.0, 0.0);
+        let mut center_b : Vec2 = Vec2::new(0.0, 0.0);
+
+        center_a[1 - dimension] = self.center[1 - dimension];
+        center_b[1 - dimension] = self.center[1- dimension];
+
+        center_a[dimension] = self.center[dimension] - self.size[dimension] / 2.0 + split / 2.0;
+        center_b[dimension] = self.center[dimension] + self.size[dimension] / 2.0 - split / 2.0;
+
+        let mut size_a : Vec2 = self.center.clone() - center_a * 2.0;
+        let mut size_b : Vec2 = center_b.clone() - self.center * 2.0;
+
+        self.child_a = Cell {
+            center : center_a,
+            size : size_a,
+            depth : next_depth,
+            start_index : self.start_index,
+            end_index : self.end_index
+        }
+
+
 
         return particles;
     }
