@@ -14,6 +14,16 @@ fn main() {
         .run();
 }
 
+struct Test {
+    a : i32,
+}
+
+impl Test {
+    fn incr(mut self, b : i32) {
+        self.a += b;
+    }
+}
+
 struct Model {
     particles : [Particle; PARTICLE_COUNT],
 }
@@ -34,7 +44,7 @@ impl Particle {
         return acc;
     }
 
-    fn kick_drift_kick(mut self, dt : f32) {
+    fn kick_drift_kick(&mut self, dt : f32) {
         // Leap-Frog Integration
         // Kick
         println!("pos : {}", self.position);
@@ -48,7 +58,7 @@ impl Particle {
         self.velocity = v_half + self.acc() * dt * 0.5;
     }
 
-    fn enforce_boundary_conditions(mut self, width : f32, height : f32) {
+    fn enforce_boundary_conditions(&mut self, width : f32, height : f32) {
         // Periodic Boundary Conditions
         self.position.x -= (self.position.x > width * 0.5) as i32 as f32 * width;
         self.position.x += (self.position.x < -width * 0.5) as i32 as f32 * width;
@@ -168,15 +178,15 @@ fn update(app: &App, model: &mut Model, update: Update) {
     let win = window.rect();
     let h = win.h();
     let w = win.w();
-    println!("Particle 0-0 {}", model.particles[0].position);
+    //println!("Particle 0-0 {}", model.particles[0].position);
     model.particles[0].kick_drift_kick(dt);
-    println!("Particle 0-1 {}", model.particles[0].position);
+    //println!("Particle 0-1 {}", model.particles[0].positiosn);
     
-    /*for particle in model.particles {
+    for particle in model.particles.iter_mut() {
         particle.kick_drift_kick(dt);
         particle.enforce_boundary_conditions(w, h);
-    }*/
-    println!("Update {}", dt);
+    }
+    //println!("Update {}", dt);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
