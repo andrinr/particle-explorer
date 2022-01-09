@@ -86,6 +86,9 @@ impl Cell {
             for (_i, particle) in particles.iter().enumerate() {
                 left_count += (particle.position[dimension] < split ) as i32;
             }
+            
+            // maybe swithc to parallel version
+            //particles.par_iter().filter(|&p| p.position[dimension] < split).reduce(|x, y| x + y);
 
             if abs(left_count - half_count) <= 1 { break; }
 
@@ -97,7 +100,7 @@ impl Cell {
         // TODO: reshuffle array
         let mut i = n - 1;
         let mut j = 0;
-        
+
         loop {
             if i == j { break ;}
 
@@ -126,7 +129,7 @@ impl Cell {
         let size_a : Vec2 = self.center.clone() - center_a * 2.0;
         let size_b : Vec2 = center_b.clone() - self.center * 2.0;
 
-        let child_a = Box::new(Cell {
+        let a= Box::new(Cell {
             center : center_a,
             size : size_a,
             depth : next_depth,
@@ -134,9 +137,9 @@ impl Cell {
             child_b : None
         });
 
-        child_a.split(&mut particles[0 .. left_count as usize]);
+        (*a).split(&mut particles[0 .. left_count as usize]);
 
-        let child_b = Box::new(Cell {
+        let b = Box::new(Cell {
             center : center_b,
             size : size_b,
             depth : next_depth,
@@ -144,10 +147,10 @@ impl Cell {
             child_b : None
         });
 
-        child_b.split(&mut particles[left_count as usize .. n]);
+        (*b).split(&mut particles[left_count as usize .. n]);
 
-        self.child_a = Some(child_a);
-        self.child_b = Some(child_b);
+        self.child_a = Some(a);
+        self.child_b = Some(b);
     }
 
     fn draw(self, app: &App) {
@@ -218,11 +221,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
         .radius(1.0)
         .resolution(10.0);
     }
-
-    let window = app.main_window();
-    let win = window.rect();
-    let h = win.h();
-    let w = win.w();
 
     // put everything on the frame
     draw.to_frame(app, &frame).unwrap();
