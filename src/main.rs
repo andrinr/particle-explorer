@@ -53,12 +53,14 @@ impl Particle {
     }
 }
 
+type Link = Option<Box<Cell>>;
+
 struct Cell {
     center : Vec2,
     size : Vec2,
     depth : i32,
-    child_a : Option<Box<Cell>>,
-    child_b : Option<Box<Cell>>,
+    child_a : Link,
+    child_b : Link,
 }
 
 impl Cell {
@@ -71,7 +73,7 @@ impl Cell {
             return;
         }
 
-        let dimension = (self.size[0] > self.size[1]) as usize;
+        let dimension = (self.size[0] < self.size[1]) as usize;
         let half_count : i32  = (n as i32) / 2;
         let mut step : f32 = self.size[dimension] / 2.0;
         let mut split : f32 = self.center[dimension];
@@ -95,14 +97,18 @@ impl Cell {
             step /= 2.0;
 
             split += if left_count < half_count { step } else { -step};
+
+            //println!("{}", left_count);
         }
         
         // TODO: reshuffle array
-        let mut i = n - 1;
-        let mut j = 0;
+        let mut i = 0;
+        let mut j = n - 1;
 
         loop {
             if i == j { break ;}
+
+            println!("{},{}", i, j);
 
             if particles[i].position[dimension] < split {
                 i += 1;
@@ -129,7 +135,7 @@ impl Cell {
         let size_a : Vec2 = self.center.clone() - center_a * 2.0;
         let size_b : Vec2 = center_b.clone() - self.center * 2.0;
 
-        let a= Box::new(Cell {
+        let a = Box::new(Cell {
             center : center_a,
             size : size_a,
             depth : next_depth,
@@ -137,7 +143,6 @@ impl Cell {
             child_b : None
         });
 
-        (*a).split(&mut particles[0 .. left_count as usize]);
 
         let b = Box::new(Cell {
             center : center_b,
@@ -147,10 +152,19 @@ impl Cell {
             child_b : None
         });
 
-        (*b).split(&mut particles[left_count as usize .. n]);
 
         self.child_a = Some(a);
         self.child_b = Some(b);
+
+        match self.child_a {
+            Some(x) => x.split(&mut particles[0 .. left_count as usize]),
+            None => ()
+        }
+        
+        match self.child_b {
+            Some(x) => x.split(&mut particles[left_count as usize .. n]),
+            None => ()
+        }   
     }
 
     fn draw(self, app: &App) {
