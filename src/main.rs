@@ -58,7 +58,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
         particle.enforce_boundary_conditions(w, h);
     }
 
-    let root = Cell {
+    let mut root = tree::Cell {
         center : Vec2::new(w / 2.0, h / 2.0),
         size : Vec2::new(w, h),
         depth : 0,
@@ -66,7 +66,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
         child_b : None
     };
 
-    root.split(&mut model.particles[0..PARTICLE_COUNT]);
+    root.split(&mut model.particles[0..PARTICLE_COUNT], 2);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {

@@ -19,7 +19,7 @@ impl Particle {
         return acc;
     }
 
-    fn kick_drift_kick(&mut self, dt : f32) {
+    pub fn kick_drift_kick(&mut self, dt : f32) {
         // Leap-Frog Integration
         // Kick
         let v_half = self.velocity + self.acc() * dt * 0.5;
@@ -29,7 +29,7 @@ impl Particle {
         self.velocity = v_half + self.acc() * dt * 0.5;
     }
 
-    fn enforce_boundary_conditions(&mut self, width : f32, height : f32) {
+    pub fn enforce_boundary_conditions(&mut self, width : f32, height : f32) {
         // Periodic Boundary Conditions
         self.position.x -= (self.position.x > width * 0.5) as i32 as f32 * width;
         self.position.x += (self.position.x < -width * 0.5) as i32 as f32 * width;
