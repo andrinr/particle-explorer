@@ -86,7 +86,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
 
     // set background to blue
-    draw.rect().w(win.w()).h(win.h()).x_y(0.0, 0.0).color(rgba(0.0, 0.0, 0.0, 0.3));
+    draw.rect().w(win.w()).h(win.h()).x_y(0.0, 0.0).color(rgba(0.0, 0.0, 0.0, 1.0));
 
     recursive_cell_view(&model.root, &draw);
 

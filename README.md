@@ -1,4 +1,4 @@
 # particle-explorer
-Particle simulation in Rust using nannou.
+Orthogonal Recusrice Bisection in Nannou.
 
-![Particles](particles.png)
+![Particles](out/01.png)
