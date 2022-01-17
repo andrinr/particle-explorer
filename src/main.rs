@@ -5,7 +5,7 @@ mod tree;
 use nannou::prelude::*;
 use nannou::glam::Vec2;
 
-const PARTICLE_COUNT : usize = 1<<6;
+const PARTICLE_COUNT : usize = 1<<10;
 
 fn main() {
     nannou::app(model)
@@ -15,7 +15,8 @@ fn main() {
 }
 
 struct Model {
-    particles : [tree::particle::Particle; PARTICLE_COUNT]
+    particles : [tree::particle::Particle; PARTICLE_COUNT],
+    root : tree::Cell
 }
 
 fn model(app: &App) -> Model {
@@ -38,7 +39,15 @@ fn model(app: &App) -> Model {
         particle.position.y = h * (random_f32() - 0.5);
     }
 
-    Model {particles : particles}
+    let mut root = tree::Cell {
+        center : Vec2::new(w / 2.0, h / 2.0),
+        size : Vec2::new(w, h),
+        depth : 0,
+        child_a : None, 
+        child_b : None
+    };
+
+    Model {particles : particles, root: root}
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
@@ -58,28 +67,34 @@ fn update(app: &App, model: &mut Model, update: Update) {
         particle.enforce_boundary_conditions(w, h);
     }
 
-    let mut root = tree::Cell {
-        center : Vec2::new(w / 2.0, h / 2.0),
+    model.root = tree::Cell {
+        center : Vec2::new(0.0, 0.0),
         size : Vec2::new(w, h),
         depth : 0,
         child_a : None, 
         child_b : None
     };
 
-    root.split(&mut model.particles[0..PARTICLE_COUNT], 2);
+    model.root.split(&mut model.particles[0..PARTICLE_COUNT], 6);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
+
+    let window = app.main_window();
+    let win = window.rect();
+
     let draw = app.draw();
 
     // set background to blue
-    draw.background().color(BLACK);
+    draw.rect().w(win.w()).h(win.h()).x_y(0.0, 0.0).color(rgba(0.0, 0.0, 0.0, 0.3));
+
+    recursive_cell_view(&model.root, &draw);
 
     for particle in model.particles {
         draw.ellipse()
-        .color(WHITE)
+        .color(RED)
         .x_y(particle.position.x, particle.position.y)
-        .radius(1.0)
+        .radius(2.0)
         .resolution(10.0);
     }
 
@@ -87,4 +102,25 @@ fn view(app: &App, model: &Model, frame: Frame) {
     draw.to_frame(app, &frame).unwrap();
 
     //frame.clear(PURPLE)
+}
+
+fn recursive_cell_view(cell : &tree::Cell, draw : &Draw) {
+
+    draw.rect()
+    .no_fill()
+    .stroke(WHITE)
+    .stroke_weight(1.0)
+    .x_y(cell.center.x, cell.center.y)
+    .w(cell.size.x)
+    .h(cell.size.y);
+
+    match & cell.child_a {
+        Some(x) => recursive_cell_view(x, &draw),
+        None => ()
+    }
+    
+    match & cell.child_b {
+        Some(x) => recursive_cell_view(x, &draw),
+        None => ()
+    } 
 }

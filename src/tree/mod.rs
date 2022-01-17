@@ -26,27 +26,24 @@ impl Cell {
         let mut step : f32 = self.size[dimension] / 2.0;
         let mut split : f32 = self.center[dimension];
         
-        println!("{},{},{},{}", dimension, half_count, step, split);
-
+        let mut i = 0;
         let left_count = loop {
-            let mut left_count = 0;
+            let mut counter = 0;
 
             for (_i, particle) in particles.iter().enumerate() {
-                left_count += (particle.position[dimension] < split ) as i32;
+                counter += (particle.position[dimension] < split ) as i32;
             }
-            
+
             // maybe swithc to parallel version
             //particles.par_iter().filter(|&p| p.position[dimension] < split).reduce(|x, y| x + y);
-
-            if abs(left_count - half_count) <= 1 { break left_count; }
+            i = i + 1;
+            if abs(counter - half_count) <= 1 || i > 32{ break counter; }
 
             step /= 2.0;
 
-            split += if left_count < half_count { step } else { -step };
+            split += if counter < half_count { step } else { -step };
 
-            //println!("{}", left_count);
         };
-        
         // Reshuffle array
         let mut i = 0;
         let mut j = n - 1;
@@ -54,7 +51,7 @@ impl Cell {
         loop {
             if i == j { break ;}
 
-            println!("{},{}", i, j);
+            //println!("{},{}", i, j);
 
             if particles[i].position[dimension] < split {
                 i += 1;
@@ -78,17 +75,17 @@ impl Cell {
         let left = self.center[dimension] - self.size[dimension] / 2.0;
         let right = self.center[dimension] + self.size[dimension] / 2.0;
 
-        let size_left = split - left;
-        let size_right = right - split;
+        let size_left_child = split - left;
+        let size_rigth_child = right - split;
 
-        center_a[dimension] = split - size_left / 2.0;
-        center_b[dimension] = split + size_right / 2.0;
+        center_a[dimension] = split - size_left_child / 2.0;
+        center_b[dimension] = split + size_rigth_child / 2.0;
 
-        let mut size_a : Vec2 = self.center.clone();
-        let mut size_b : Vec2 = center_b.clone();
+        let mut size_a : Vec2 = self.size.clone();
+        let mut size_b : Vec2 = self.size.clone();
 
-        size_a[dimension] = size_left;
-        size_b[dimension] = size_right;
+        size_a[dimension] = size_left_child;
+        size_b[dimension] = size_rigth_child;
 
         let a = Box::new(Cell {
             center : center_a,
@@ -125,16 +122,21 @@ impl Cell {
 mod test {
     use super::*;
     #[test]
-    fn basics() {
+    fn split_test() {
         const COUNT : usize = 1<<5;
 
-        let p = Vec2::new(-100.0, 0.0);
+        let p = Vec2::new(-0.0, 0.0);
         let v = Vec2::new(0.0, 0.0);
 
         let mut particles : [particle::Particle; COUNT] = [particle::Particle{position : p, velocity : v}; COUNT];
 
-        for i in COUNT/2..COUNT {
-            particles[i].position.x = 100.0;
+        let p = Vec2::new(10.0, 0.0);
+        let v = Vec2::new(0.0, 0.0);
+    
+        for (_i, particle) in particles.iter_mut().enumerate() {
+            particle.position.x = 100.0 * (random_f32() - 0.5);
+            particle.position.y = 100.0 * (random_f32() - 0.5);
+
         }
 
         let mut cell : Cell = Cell {
