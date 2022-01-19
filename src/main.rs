@@ -5,7 +5,7 @@ mod tree;
 use nannou::prelude::*;
 use nannou::glam::Vec2;
 
-const PARTICLE_COUNT : usize = 1<<10;
+const PARTICLE_COUNT : usize = 1<<12;
 
 fn main() {
     nannou::app(model)
@@ -39,12 +39,14 @@ fn model(app: &App) -> Model {
         particle.position.y = h * (random_f32() - 0.5);
     }
 
-    let mut root = tree::Cell {
-        center : Vec2::new(w / 2.0, h / 2.0),
+    let root = tree::Cell {
+        center : Vec2::new(0.0, 0.0),
         size : Vec2::new(w, h),
         depth : 0,
         child_a : None, 
-        child_b : None
+        child_b : None,
+        start : 0,
+        end : PARTICLE_COUNT
     };
 
     Model {particles : particles, root: root}
@@ -58,24 +60,15 @@ fn update(app: &App, model: &mut Model, update: Update) {
     let win = window.rect();
     let h = win.h();
     let w = win.w();
-    //println!("Particle 0-0 {}", model.particles[0].position);
+
     model.particles[0].kick_drift_kick(dt);
-    //println!("Particle 0-1 {}", model.particles[0].positiosn);
     
     for particle in model.particles.iter_mut() {
         particle.kick_drift_kick(dt);
         particle.enforce_boundary_conditions(w, h);
     }
 
-    model.root = tree::Cell {
-        center : Vec2::new(0.0, 0.0),
-        size : Vec2::new(w, h),
-        depth : 0,
-        child_a : None, 
-        child_b : None
-    };
-
-    model.root.split(&mut model.particles[0..PARTICLE_COUNT], 6);
+    model.root.split(&mut model.particles[0..PARTICLE_COUNT], 8);
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -86,30 +79,29 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
 
     // set background to blue
-    draw.rect().w(win.w()).h(win.h()).x_y(0.0, 0.0).color(rgba(0.0, 0.0, 0.0, 1.0));
-
-    recursive_cell_view(&model.root, &draw);
+    frame.clear(WHITE);
 
     for particle in model.particles {
         draw.ellipse()
         .color(RED)
         .x_y(particle.position.x, particle.position.y)
-        .radius(2.0)
-        .resolution(10.0);
+        .radius(1.5)
+        .resolution(8.0);
     }
+    
+    recursive_cell_view(&model.root, &draw);
 
     // put everything on the frame
     draw.to_frame(app, &frame).unwrap();
 
-    //frame.clear(PURPLE)
 }
 
 fn recursive_cell_view(cell : &tree::Cell, draw : &Draw) {
 
     draw.rect()
     .no_fill()
-    .stroke(WHITE)
-    .stroke_weight(1.0)
+    .stroke(BLACK)
+    .stroke_weight(0.8)
     .x_y(cell.center.x, cell.center.y)
     .w(cell.size.x)
     .h(cell.size.y);

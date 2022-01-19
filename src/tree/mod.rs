@@ -1,5 +1,6 @@
 use nannou::prelude::*;
 use nannou::glam::Vec2;
+use std::collections::HashSet;
 pub mod particle;
 
 type Link = Option<Box<Cell>>;
@@ -10,10 +11,12 @@ pub struct Cell {
     pub depth : i32,
     pub child_a : Link,
     pub child_b : Link,
+    pub start : usize,
+    pub end : usize
 }
 
 impl Cell {
-    // Split domain
+
     pub fn split(&mut self, particles : &mut[particle::Particle], max_depth : i32){
         let n = particles.len();
 
@@ -92,7 +95,9 @@ impl Cell {
             size : size_a,
             depth : self.depth + 1,
             child_a : None,
-            child_b : None
+            child_b : None,
+            start : self.start,
+            end : self.start + left_count as usize
         });
 
         let b = Box::new(Cell {
@@ -100,7 +105,9 @@ impl Cell {
             size : size_b,
             depth : self.depth + 1,
             child_a : None,
-            child_b : None
+            child_b : None,
+            start : self.start + left_count as usize,
+            end : self.end
         });
 
         self.child_a = Some(a);
@@ -108,13 +115,46 @@ impl Cell {
 
         match &mut self.child_a {
             Some(x) => x.split(&mut particles[0 .. left_count as usize], max_depth),
-            None => ()
+            None => {}
         }
         
         match &mut self.child_b {
             Some(x) => x.split(&mut particles[left_count as usize .. n], max_depth),
-            None => ()
+            None => {}
         }   
+    }
+
+    pub fn ballwalk(&self, pos : Vec2, radius : f32) -> Vec<&Cell> {
+
+        let left = self.center.x - self.size.x / 2.0;
+        let right = self.center.x + self.size.x / 2.0;
+
+        let bottom = self.center.y - self.size.y / 2.0;
+        let top = self.center.y + self.size.y / 2.0;
+
+        let within = 
+            pos.x > left - radius && 
+            pos.x < right + radius && 
+            pos.y > bottom - radius && 
+            pos.y < top + radius;
+
+        let mut res : Vec<&Cell> = Vec::new();
+
+        match &self.child_a {
+            Some(x) => res.append(&mut x.ballwalk(pos, radius)),
+            None => ()
+        };
+        
+        match &self.child_b {
+            Some(x) => res.append(&mut x.ballwalk(pos, radius)),
+            None => ()
+        };
+
+        if !self.child_a.is_some() && within {
+            res.push(self)
+        }
+    
+        return res;
     }
 }
 
@@ -144,7 +184,9 @@ mod test {
             size : Vec2::new(100.0, 50.0),
             depth : 0,
             child_a : None,
-            child_b : None
+            child_b : None,
+            start : 0,
+            end : COUNT
         };
 
         cell.split(&mut particles, 2);
