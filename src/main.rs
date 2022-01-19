@@ -61,6 +61,8 @@ fn update(app: &App, model: &mut Model, update: Update) {
     let h = win.h();
     let w = win.w();
 
+    model.root.size = Vec2::new(w, h);
+
     model.particles[0].kick_drift_kick(dt);
     
     for particle in model.particles.iter_mut() {
@@ -72,28 +74,45 @@ fn update(app: &App, model: &mut Model, update: Update) {
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
-
-    let window = app.main_window();
-    let win = window.rect();
-
     let draw = app.draw();
 
     // set background to blue
-    frame.clear(WHITE);
+    frame.clear(GREY);
 
     for particle in model.particles {
         draw.ellipse()
-        .color(RED)
+        .color(BLACK)
         .x_y(particle.position.x, particle.position.y)
-        .radius(1.5)
+        .radius(1.0)
         .resolution(8.0);
     }
     
+    let mouse_pos = Vec2::new(app.mouse.x, app.mouse.y);
+    let cells_near_mouse = model.root.ballwalk(mouse_pos, 10.0);
+
+    for cell in cells_near_mouse.iter() {
+        draw.rect()
+        .color(ORANGERED)
+        .x_y(cell.center.x, cell.center.y)
+        .w(cell.size.x)
+        .h(cell.size.y);
+
+        let particles_in_cell : &[tree::particle::Particle] = &model.particles[cell.start..cell.end];
+
+        for particle in particles_in_cell {
+            draw.ellipse()
+            .color(WHITE)
+            .x_y(particle.position.x, particle.position.y)
+            .radius(2.0)
+            .resolution(8.0);
+        }
+
+    }
+
     recursive_cell_view(&model.root, &draw);
 
     // put everything on the frame
     draw.to_frame(app, &frame).unwrap();
-
 }
 
 fn recursive_cell_view(cell : &tree::Cell, draw : &Draw) {

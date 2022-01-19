@@ -1,6 +1,5 @@
 use nannou::prelude::*;
 use nannou::glam::Vec2;
-use std::collections::HashSet;
 pub mod particle;
 
 type Link = Option<Box<Cell>>;
