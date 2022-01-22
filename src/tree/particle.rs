@@ -19,14 +19,14 @@ impl Particle {
         return acc;
     }
 
-    pub fn kick_drift_kick(&mut self, dt : f32) {
+    pub fn kick_drift_kick(&mut self, dt : f32, acc : Vec2) {
         // Leap-Frog Integration
         // Kick
-        let v_half = self.velocity + self.acc() * dt * 0.5;
+        let v_half = self.velocity + (self.acc() + acc) * dt * 0.5;
         // Drift
         self.position += v_half * dt;
         // Kick
-        self.velocity = v_half + self.acc() * dt * 0.5;
+        self.velocity = v_half + (self.acc() + acc) * dt * 0.5;
     }
 
     pub fn enforce_boundary_conditions(&mut self, width : f32, height : f32) {

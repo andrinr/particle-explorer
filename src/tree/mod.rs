@@ -4,6 +4,8 @@ pub mod particle;
 
 type Link = Option<Box<Cell>>;
 
+const RATIO_CHANGE_TRHESHOLD : f32 = 0.2;
+
 pub struct Cell {
     pub center : Vec2,
     pub size : Vec2,
@@ -11,7 +13,8 @@ pub struct Cell {
     pub child_a : Link,
     pub child_b : Link,
     pub start : usize,
-    pub end : usize
+    pub end : usize,
+    pub dimension : usize
 }
 
 impl Cell {
@@ -19,11 +22,19 @@ impl Cell {
     pub fn split(&mut self, particles : &mut[particle::Particle], max_depth : i32){
         let n = particles.len();
 
-        if self.depth == max_depth {
+        if self.depth == max_depth || n < 2 {
             return;
         }
 
-        let dimension = (self.size[0] < self.size[1]) as usize;
+        let ratio = self.size.x / self.size.y;
+        let mut dimension = (self.size.x < self.size.y) as usize;
+
+        if abs(1.0 - ratio) < RATIO_CHANGE_TRHESHOLD { 
+            dimension = self.dimension;
+        }
+
+        self.dimension = dimension;
+
         let half_count : i32  = (n as i32) / 2;
         let mut step : f32 = self.size[dimension] / 2.0;
         let mut split : f32 = self.center[dimension];
@@ -37,9 +48,10 @@ impl Cell {
             }
 
             // maybe swithc to parallel version
-            //particles.par_iter().filter(|&p| p.position[dimension] < split).reduce(|x, y| x + y);
+            //particles.par_iter_mut().filter(|&p| p.position[dimension] < split).reduce(|x, y| x + y);
+
             i = i + 1;
-            if abs(counter - half_count) <= 1 || i > 32{ break counter; }
+            if abs(counter - half_count) <= 1 { break counter; }
 
             step /= 2.0;
 
@@ -89,34 +101,56 @@ impl Cell {
         size_a[dimension] = size_left_child;
         size_b[dimension] = size_rigth_child;
 
-        let a = Box::new(Cell {
-            center : center_a,
-            size : size_a,
-            depth : self.depth + 1,
-            child_a : None,
-            child_b : None,
-            start : self.start,
-            end : self.start + left_count as usize
-        });
+        // Create or update child cells
+        match &mut self.child_a {
+            Some(x) => {
+                x.center = center_a;
+                x.size = size_a;
+                x.start = self.start;
+                x.end = self.start + left_count as usize;
+                x.depth = self.depth + 1;
+            },
+            None => {
+                self.child_a = Some(Box::new(Cell {
+                    center : center_a,
+                    size : size_a,
+                    depth : self.depth + 1,
+                    child_a : None,
+                    child_b : None,
+                    start : self.start,
+                    end : self.start + left_count as usize,
+                    dimension : 0,
+                }));
+            }
+        }
 
-        let b = Box::new(Cell {
-            center : center_b,
-            size : size_b,
-            depth : self.depth + 1,
-            child_a : None,
-            child_b : None,
-            start : self.start + left_count as usize,
-            end : self.end
-        });
-
-        self.child_a = Some(a);
-        self.child_b = Some(b);
+        match &mut self.child_b {
+            Some(x) => {
+                x.center = center_b;
+                x.size = size_b;
+                x.start = self.start + left_count as usize;
+                x.end = self.end;
+                x.depth = self.depth + 1;
+            },
+            None => {
+                self.child_b = Some(Box::new(Cell {
+                    center : center_b,
+                    size : size_b,
+                    depth : self.depth + 1,
+                    child_a : None,
+                    child_b : None,
+                    start : self.start + left_count as usize,
+                    end : self.end,
+                    dimension : 0,
+                }));
+            }
+        }   
 
         match &mut self.child_a {
             Some(x) => x.split(&mut particles[0 .. left_count as usize], max_depth),
             None => {}
-        }
-        
+        } 
+
         match &mut self.child_b {
             Some(x) => x.split(&mut particles[left_count as usize .. n], max_depth),
             None => {}
@@ -154,44 +188,5 @@ impl Cell {
         }
     
         return res;
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn split_test() {
-        const COUNT : usize = 1<<5;
-
-        let p = Vec2::new(-0.0, 0.0);
-        let v = Vec2::new(0.0, 0.0);
-
-        let mut particles : [particle::Particle; COUNT] = [particle::Particle{position : p, velocity : v}; COUNT];
-
-        let p = Vec2::new(10.0, 0.0);
-        let v = Vec2::new(0.0, 0.0);
-    
-        for (_i, particle) in particles.iter_mut().enumerate() {
-            particle.position.x = 100.0 * (random_f32() - 0.5);
-            particle.position.y = 100.0 * (random_f32() - 0.5);
-
-        }
-
-        let mut cell : Cell = Cell {
-            center : Vec2::new(0.0, 0.0),
-            size : Vec2::new(100.0, 50.0),
-            depth : 0,
-            child_a : None,
-            child_b : None,
-            start : 0,
-            end : COUNT
-        };
-
-        cell.split(&mut particles, 2);
-
-        let x = cell.center.x;
-        assert_eq!(x, 0.0);
-
     }
 }

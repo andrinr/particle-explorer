@@ -16,7 +16,8 @@ fn main() {
 
 struct Model {
     particles : [tree::particle::Particle; PARTICLE_COUNT],
-    root : tree::Cell
+    root : tree::Cell,
+    i : i32
 }
 
 fn model(app: &App) -> Model {
@@ -46,15 +47,16 @@ fn model(app: &App) -> Model {
         child_a : None, 
         child_b : None,
         start : 0,
-        end : PARTICLE_COUNT
+        end : PARTICLE_COUNT,
+        dimension : 0,
     };
 
-    Model {particles : particles, root: root}
+    Model {particles : particles, root: root, i : 0}
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
 
-    let dt : f32 = (update.since_last.subsec_millis() as f32) * 0.001;
+    let _dt : f32 = (update.since_last.subsec_millis() as f32) * 0.001;
 
     let window = app.main_window();
     let win = window.rect();
@@ -63,14 +65,32 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
     model.root.size = Vec2::new(w, h);
 
-    model.particles[0].kick_drift_kick(dt);
+
+    /*for particle in model.particles.iter() {
+        let cells_near_particle = model.root.ballwalk(particle.position, 2.0);
+
+        for cell in cells_near_particle.iter() {
+            let particles_in_cell : &[tree::particle::Particle] = &model.particles[cell.start..cell.end];
     
+            for other_particle in particles_in_cell {
+                let d = other_particle.position.distance(particle.position);
+                if d < 2.0 {
+
+                }
+            }
+        }
+    }*/
+
     for particle in model.particles.iter_mut() {
-        particle.kick_drift_kick(dt);
+        particle.kick_drift_kick(0.01, Vec2::new(0.0, 0.0));
         particle.enforce_boundary_conditions(w, h);
     }
 
-    model.root.split(&mut model.particles[0..PARTICLE_COUNT], 8);
+
+    if model.i % 10 == 0 {
+        model.root.split(&mut model.particles[0..PARTICLE_COUNT], 8);
+    }
+    model.i += 1;
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
@@ -113,6 +133,21 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     // put everything on the frame
     draw.to_frame(app, &frame).unwrap();
+
+    let file_path = captured_frame_path(app, &frame);
+    app.main_window().capture_frame(file_path);
+}
+
+fn captured_frame_path(app: &App, frame: &Frame) -> std::path::PathBuf {
+    // Create a path that we want to save this frame to.
+    app.project_path()
+        .expect("failed to locate `project_path`")
+        // Capture all frames to a directory called `/<path_to_nannou>/nannou/simple_capture`.
+        .join("out")
+        // Name each file after the number of the frame.
+        .join(format!("{:03}", frame.nth()))
+        // The extension will be PNG. We also support tiff, bmp, gif, jpeg, webp and some others.
+        .with_extension("png")
 }
 
 fn recursive_cell_view(cell : &tree::Cell, draw : &Draw) {
