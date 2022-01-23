@@ -5,7 +5,8 @@ mod tree;
 use nannou::prelude::*;
 use nannou::glam::Vec2;
 
-const PARTICLE_COUNT : usize = 1<<12;
+const PARTICLE_MAX_RADIUS : f32 = 20.0;
+const PARTICLE_COUNT : usize = 1<<10;
 
 fn main() {
     nannou::app(model)
@@ -29,8 +30,10 @@ fn model(app: &App) -> Model {
 
     let p = Vec2::new(10.0, 0.0);
     let v = Vec2::new(0.0, 0.0);
+    let a = Vec2::new(0.0, 0.0);
 
-    let mut particles : [tree::particle::Particle; PARTICLE_COUNT] = [tree::particle::Particle{position : p, velocity : v}; PARTICLE_COUNT];
+    let mut particles : [tree::particle::Particle; PARTICLE_COUNT] = 
+        [tree::particle::Particle{position : p, velocity : v, acceleration : a, radius : 0.0}; PARTICLE_COUNT];
 
     for (_i, particle) in particles.iter_mut().enumerate() {
         particle.velocity.x = 100.0 * (random_f32() - 0.5) * (random_f32() - 0.5);
@@ -38,6 +41,8 @@ fn model(app: &App) -> Model {
 
         particle.position.x = w * (random_f32() - 0.5);
         particle.position.y = h * (random_f32() - 0.5);
+
+        particle.radius = random_f32() * random_f32() *  PARTICLE_MAX_RADIUS;
     }
 
     let root = tree::Cell {
@@ -56,7 +61,9 @@ fn model(app: &App) -> Model {
 
 fn update(app: &App, model: &mut Model, update: Update) {
 
-    let _dt : f32 = (update.since_last.subsec_millis() as f32) * 0.001;
+    let dt : f32 = (update.since_last.subsec_millis() as f32) * 0.001;
+
+    println!("fps: {}", 1.0 / dt);
 
     let window = app.main_window();
     let win = window.rect();
@@ -65,30 +72,39 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
     model.root.size = Vec2::new(w, h);
 
+    for i in 0..model.particles.len() {
+        let cells_near_particle = 
+            model.root.ballwalk(model.particles[i].position, model.particles[i].radius + PARTICLE_MAX_RADIUS);
 
-    /*for particle in model.particles.iter() {
-        let cells_near_particle = model.root.ballwalk(particle.position, 2.0);
-
+        let mut acceleration = Vec2::new(0.0, 0.0);
         for cell in cells_near_particle.iter() {
             let particles_in_cell : &[tree::particle::Particle] = &model.particles[cell.start..cell.end];
     
             for other_particle in particles_in_cell {
-                let d = other_particle.position.distance(particle.position);
-                if d < 2.0 {
+                let mut vector = other_particle.position.clone() - model.particles[i].position;
+                let d = vector.length();
 
+                // Skip self position
+                if d > 0.01 && d < model.particles[i].radius + other_particle.radius {
+                    vector = vector / d;
+
+                    acceleration += 900.0 * -vector;  
                 }
             }
         }
-    }*/
 
-    for particle in model.particles.iter_mut() {
-        particle.kick_drift_kick(0.01, Vec2::new(0.0, 0.0));
-        particle.enforce_boundary_conditions(w, h);
+        model.particles[i].acceleration = acceleration;
     }
 
+    for particle in model.particles.iter_mut() {
+        particle.kick_drift_kick(0.01);
+        particle.enforce_boundary_conditions(w, h);
+        // Damping as no energy conversion in system
+        particle.velocity *= 0.99;
+    }
 
-    if model.i % 10 == 0 {
-        model.root.split(&mut model.particles[0..PARTICLE_COUNT], 8);
+    if model.i % 3 == 0 {
+        model.root.split(&mut model.particles[0..PARTICLE_COUNT], 6);
     }
     model.i += 1;
 }
@@ -103,8 +119,8 @@ fn view(app: &App, model: &Model, frame: Frame) {
         draw.ellipse()
         .color(BLACK)
         .x_y(particle.position.x, particle.position.y)
-        .radius(1.0)
-        .resolution(8.0);
+        .radius(particle.radius)
+        .resolution(32.0);
     }
     
     let mouse_pos = Vec2::new(app.mouse.x, app.mouse.y);
@@ -123,8 +139,8 @@ fn view(app: &App, model: &Model, frame: Frame) {
             draw.ellipse()
             .color(WHITE)
             .x_y(particle.position.x, particle.position.y)
-            .radius(2.0)
-            .resolution(8.0);
+            .radius(particle.radius)
+            .resolution(32.0);
         }
 
     }
@@ -134,8 +150,8 @@ fn view(app: &App, model: &Model, frame: Frame) {
     // put everything on the frame
     draw.to_frame(app, &frame).unwrap();
 
-    let file_path = captured_frame_path(app, &frame);
-    app.main_window().capture_frame(file_path);
+    //let file_path = captured_frame_path(app, &frame);
+    //app.main_window().capture_frame(file_path);
 }
 
 fn captured_frame_path(app: &App, frame: &Frame) -> std::path::PathBuf {
