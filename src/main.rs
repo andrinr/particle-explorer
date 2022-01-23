@@ -5,7 +5,8 @@ mod tree;
 use nannou::prelude::*;
 use nannou::glam::Vec2;
 
-const PARTICLE_MAX_RADIUS : f32 = 20.0;
+const PARTICLE_MAX_RADIUS : f32 = 10.0;
+const PARTICLE_MIN_RADIUS : f32 = 5.0;
 const PARTICLE_COUNT : usize = 1<<10;
 
 fn main() {
@@ -42,7 +43,7 @@ fn model(app: &App) -> Model {
         particle.position.x = w * (random_f32() - 0.5);
         particle.position.y = h * (random_f32() - 0.5);
 
-        particle.radius = random_f32() * random_f32() *  PARTICLE_MAX_RADIUS;
+        particle.radius = random_f32() * random_f32() * (PARTICLE_MAX_RADIUS - PARTICLE_MIN_RADIUS) + PARTICLE_MIN_RADIUS;
     }
 
     let root = tree::Cell {
@@ -92,19 +93,21 @@ fn update(app: &App, model: &mut Model, update: Update) {
                 }
             }
         }
-
         model.particles[i].acceleration = acceleration;
+        model.particles[i].acceleration += 10.0 * 
+            (model.particles[(i+1) % model.particles.len()].position.clone() - model.particles[i].position);
+        
     }
 
     for particle in model.particles.iter_mut() {
         particle.kick_drift_kick(0.01);
         particle.enforce_boundary_conditions(w, h);
         // Damping as no energy conversion in system
-        particle.velocity *= 0.99;
+        particle.velocity *= 0.95;
     }
 
     if model.i % 3 == 0 {
-        model.root.split(&mut model.particles[0..PARTICLE_COUNT], 6);
+        model.root.split(&mut model.particles[0..PARTICLE_COUNT], 7);
     }
     model.i += 1;
 }

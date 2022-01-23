@@ -1,7 +1,7 @@
 use nannou::glam::Vec2;
 use nannou::prelude::*;
 
-const GRAVITY : f32 = 4000.0;
+const GRAVITY : f32 = 400.0;
 
 #[derive(Copy, Clone)]
 pub struct Particle {

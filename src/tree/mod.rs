@@ -157,6 +157,7 @@ impl Cell {
         }   
     }
 
+    // Todo add periodic boundaries
     pub fn ballwalk(&self, pos : Vec2, radius : f32) -> Vec<&Cell> {
 
         let left = self.center.x - self.size.x / 2.0;
@@ -173,6 +174,10 @@ impl Cell {
 
         let mut res : Vec<&Cell> = Vec::new();
 
+        if !within {
+            return res;
+        }
+
         match &self.child_a {
             Some(x) => res.append(&mut x.ballwalk(pos, radius)),
             None => ()
@@ -183,7 +188,7 @@ impl Cell {
             None => ()
         };
 
-        if !self.child_a.is_some() && within {
+        if !self.child_a.is_some() {
             res.push(self)
         }
     
