@@ -1,7 +1,7 @@
 use nannou::glam::Vec2;
 use nannou::prelude::*;
 
-const GRAVITY : f32 = 400.0;
+const GRAVITY : f32 = -10000.0;
 
 #[derive(Copy, Clone)]
 pub struct Particle {
@@ -14,7 +14,7 @@ pub struct Particle {
 impl Particle {
     fn acc(self) -> Vec2 {
         // Random noise
-        let mut acc : Vec2 = Vec2::new(random_f32() - 0.5, random_f32() - 0.5) * 3.0;
+        let mut acc : Vec2 = Vec2::new(random_f32() - 0.5, random_f32() - 0.5) * 30.0;
         // Gravity
         let d : f32 = self.position.length() + 0.5;
         acc -= self.position.clone().normalize() / d * GRAVITY;   
