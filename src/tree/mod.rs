@@ -19,7 +19,7 @@ pub struct Cell {
 
 impl Cell {
 
-    pub fn split(&mut self, particles : &mut[particle::Particle], tracer : &mut[usize], max_depth : i32){
+    pub fn split(&mut self, particles : &mut[particle::Particle], indices : &mut[usize], max_depth : i32){
         let n = particles.len();
 
         if self.depth == max_depth || n < 2 {
@@ -78,7 +78,7 @@ impl Cell {
 
             particles.swap(i, j);
 
-            tracer.swap(i,j);
+            indices.swap(i,j);
         }
 
         // Define new child cells
@@ -151,7 +151,7 @@ impl Cell {
         match &mut self.child_a {
             Some(x) => x.split(
                 &mut particles[0 .. left_count as usize],
-                &mut tracer[0 .. left_count as usize],
+                &mut indices[0 .. left_count as usize],
                 max_depth),
             None => {}
         } 
@@ -159,7 +159,7 @@ impl Cell {
         match &mut self.child_b {
             Some(x) => x.split(
                 &mut particles[left_count as usize .. n], 
-                &mut tracer[left_count as usize .. n],
+                &mut indices[left_count as usize .. n],
                 max_depth),
             None => {}
         }   

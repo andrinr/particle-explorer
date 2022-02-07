@@ -5,9 +5,9 @@ mod tree;
 use nannou::prelude::*;
 use nannou::glam::Vec2;
 
-const PARTICLE_MAX_RADIUS : f32 = 6.0;
-const PARTICLE_MIN_RADIUS : f32 = 3.0;
-const PARTICLE_COUNT : usize = 1<<9;
+const PARTICLE_MAX_RADIUS : f32 = 10.0;
+const PARTICLE_MIN_RADIUS : f32 = 10.0;
+const PARTICLE_COUNT : usize = 1<<11;
 
 fn main() {
     nannou::app(model)
@@ -17,41 +17,50 @@ fn main() {
 }
 
 struct Model {
-    particles : [tree::particle::Particle; PARTICLE_COUNT],
-    particle_indices : [usize; PARTICLE_COUNT],
-    particle_tracer : [usize; PARTICLE_COUNT],
+    particles : Vec<tree::particle::Particle>,
+    particles_indices : Vec<usize>,
+    particles_tracer : Vec<usize>,
     root : tree::Cell,
     i : i32
 }
 
 fn model(app: &App) -> Model {
-
     let window = app.main_window();
     let win = window.rect();
     let h = win.h();
     let w = win.w();
 
-    let p = Vec2::new(10.0, 0.0);
-    let v = Vec2::new(0.0, 0.0);
-    let a = Vec2::new(0.0, 0.0);
+    let mut particles : Vec<tree::particle::Particle> = Vec::with_capacity(PARTICLE_COUNT);
 
-    let mut particles : [tree::particle::Particle; PARTICLE_COUNT] = 
-        [tree::particle::Particle{position : p, velocity : v, acceleration : a, radius : 0.0}; PARTICLE_COUNT];
+    let mut particles_indices : Vec<usize> = Vec::with_capacity(PARTICLE_COUNT);
+    let mut particles_tracer : Vec<usize> = Vec::with_capacity(PARTICLE_COUNT);
 
-    let mut particle_indices : [usize; PARTICLE_COUNT] = [0; PARTICLE_COUNT];
-    let mut particle_tracer : [usize; PARTICLE_COUNT] = [0; PARTICLE_COUNT];
+    for i in 0..PARTICLE_COUNT {
+        let r = h / 4.0;
+        let velocity : Vec2 = Vec2::new(
+            100.0 * (random_f32() - 0.5) * (random_f32() - 0.5),
+            100.0 * (random_f32() - 0.5) * (random_f32() - 0.5)
+        );
 
-    for i in 0..particles.len() {
-        particle_indices[i] = i;
+        let position : Vec2 = Vec2::new(
+            (i as f32 / PARTICLE_COUNT as f32 * PI * 2.0).cos() * r,
+            (i as f32 / PARTICLE_COUNT as f32 * PI * 2.0).sin() * r,
+        );
 
-        particles[i].velocity.x = 100.0 * (random_f32() - 0.5) * (random_f32() - 0.5);
-        particles[i].velocity.y = 100.0 * (random_f32() - 0.5) * (random_f32() - 0.5);
+        let particle : tree::particle::Particle = tree::particle::Particle {
+            acceleration : Vec2::new(0.0, 0.0),
+            radius : random_f32() * random_f32() * (PARTICLE_MAX_RADIUS - PARTICLE_MIN_RADIUS) + PARTICLE_MIN_RADIUS,
+            position : position,
+            velocity : velocity
+        };
 
-        particles[i].position.x = w * (random_f32() - 0.5);
-        particles[i].position.y = h * (random_f32() - 0.5);
+        particles.push(particle);
 
-        particles[i].radius = random_f32() * random_f32() * (PARTICLE_MAX_RADIUS - PARTICLE_MIN_RADIUS) + PARTICLE_MIN_RADIUS;
+        particles_indices.push(i);
+        particles_tracer.push(0);
     }
+
+    println!("lengths : {}", particles.len());
 
     let root = tree::Cell {
         center : Vec2::new(0.0, 0.0),
@@ -64,14 +73,20 @@ fn model(app: &App) -> Model {
         dimension : 0,
     };
 
-    Model {particles : particles, particle_indices, particle_tracer: particle_tracer, root: root, i : 0}
+    Model {
+        particles : particles.to_vec(), 
+        particles_indices : particles_indices.to_vec(), 
+        particles_tracer: particles_indices.to_vec(), 
+        root: root, 
+        i : 0
+    }
 }
 
 fn update(app: &App, model: &mut Model, update: Update) {
 
     let dt : f32 = (update.since_last.subsec_millis() as f32) * 0.001;
 
-    println!("fps: {}", 1.0 / dt);
+    //println!("fps: {}", 1.0 / dt);
 
     let window = app.main_window();
     let win = window.rect();
@@ -81,11 +96,11 @@ fn update(app: &App, model: &mut Model, update: Update) {
     model.root.size = Vec2::new(w, h);
 
     if model.i % 3 == 0 {
-        model.root.split(&mut model.particles, &mut model.particle_indices, 8);
+        model.root.split(&mut model.particles, &mut model.particles_indices, 10);
     }
     
-    for i in 0..model.particle_indices.len() {
-        model.particle_tracer[model.particle_indices[i]] = i;
+    for i in 0..model.particles_indices.len() {
+        model.particles_tracer[model.particles_indices[i]] = i;
     }
 
     for i in 0..model.particles.len() {
@@ -102,7 +117,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
                 // Skip self position
                 if d > 0.01 && d < model.particles[i].radius + other_particle.radius {
-                    vector = vector / d;
+                    vector = vector / d / d;
 
                     acceleration += 3000.0 * -vector;  
                 }
@@ -110,9 +125,9 @@ fn update(app: &App, model: &mut Model, update: Update) {
         }
         model.particles[i].acceleration = acceleration;
 
-        let index = model.particle_indices[i];
+        let index = model.particles_indices[i];
         let vector = 
-            model.particles[model.particle_tracer[(index+1) % model.particles.len()]].position.clone() - 
+            model.particles[model.particles_tracer[(index+1) % model.particles.len()]].position.clone() - 
             model.particles[i].position;
         let d = vector.length();
 
@@ -141,18 +156,18 @@ fn view(app: &App, model: &Model, frame: Frame) {
         draw.ellipse()
         .color(WHITE)
         .x_y(model.particles[i].position.x, model.particles[i].position.y)
-        .radius(model.particles[i].radius)
+        .radius(2.0)
         .resolution(32.0);
 
-        /*draw.line()
-        .start(pt2(model.particles[model.particle_tracer[i]].position.x, model.particles[model.particle_tracer[i]].position.y))
-        .end(pt2(model.particles[model.particle_tracer[(i+1)%n]].position.x, model.particles[model.particle_tracer[(i+1)%n]].position.y))
+        draw.line()
+        .start(pt2(model.particles[model.particles_tracer[i]].position.x, model.particles[model.particles_tracer[i]].position.y))
+        .end(pt2(model.particles[model.particles_tracer[(i+1)%n]].position.x, model.particles[model.particles_tracer[(i+1)%n]].position.y))
         .weight(1.0)
-        .color(WHITE);*/
+        .color(WHITE);
     
     }
 
-    let mouse_pos = Vec2::new(app.mouse.x, app.mouse.y);
+    /*let mouse_pos = Vec2::new(app.mouse.x, app.mouse.y);
     let cells_near_mouse = model.root.ballwalk(mouse_pos, 10.0);
 
     for cell in cells_near_mouse.iter() {
@@ -172,15 +187,15 @@ fn view(app: &App, model: &Model, frame: Frame) {
             .resolution(32.0);
         }
 
-    }
+    }*/
 
     //recursive_cell_view(&model.root, &draw);
 
     // put everything on the frame
     draw.to_frame(app, &frame).unwrap();
 
-    /*let file_path = captured_frame_path(app, &frame);
-    app.main_window().capture_frame(file_path);*/
+    let file_path = captured_frame_path(app, &frame);
+    app.main_window().capture_frame(file_path);
 }
 
 fn captured_frame_path(app: &App, frame: &Frame) -> std::path::PathBuf {
