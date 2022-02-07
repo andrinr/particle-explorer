@@ -190,7 +190,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
     }*/
 
-    //recursive_cell_view(&model.root, &draw);
+    recursive_cell_view(&model.root, &draw);
 
     // put everything on the frame
     draw.to_frame(app, &frame).unwrap();

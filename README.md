@@ -1,4 +1,4 @@
 # particle-explorer
 Orthogonal Recusrice Bisection in Nannou.
 
-![Particles](thumbnail2.png)
+![Particles](thumbnail3.png)
